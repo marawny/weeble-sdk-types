@@ -5684,7 +5684,7 @@ declare namespace discord {
     /**
      * Entitlements for this interaction (SKU purchases).
      */
-    readonly entitlements: unknown[];
+    readonly entitlements: Entitlement[];
 
     /**
      * Guild ID the interaction occurred in, or `null` when Discord omits it.
@@ -7108,6 +7108,10 @@ declare namespace discord {
     const THREAD_LIST_SYNC: "THREAD_LIST_SYNC";
     const THREAD_MEMBER_UPDATE: "THREAD_MEMBER_UPDATE";
     const THREAD_MEMBERS_UPDATE: "THREAD_MEMBERS_UPDATE";
+    const APPLICATION_COMMAND_PERMISSIONS_UPDATE: "APPLICATION_COMMAND_PERMISSIONS_UPDATE";
+    const ENTITLEMENT_CREATE: "ENTITLEMENT_CREATE";
+    const ENTITLEMENT_UPDATE: "ENTITLEMENT_UPDATE";
+    const ENTITLEMENT_DELETE: "ENTITLEMENT_DELETE";
     const GUILD_CREATE: "GUILD_CREATE";
     const GUILD_UPDATE: "GUILD_UPDATE";
     const GUILD_DELETE: "GUILD_DELETE";
@@ -7119,6 +7123,7 @@ declare namespace discord {
     const GUILD_MEMBER_ADD: "GUILD_MEMBER_ADD";
     const GUILD_MEMBER_UPDATE: "GUILD_MEMBER_UPDATE";
     const GUILD_MEMBER_REMOVE: "GUILD_MEMBER_REMOVE";
+    const GUILD_MEMBERS_CHUNK: "GUILD_MEMBERS_CHUNK";
     const GUILD_ROLE_CREATE: "GUILD_ROLE_CREATE";
     const GUILD_ROLE_UPDATE: "GUILD_ROLE_UPDATE";
     const GUILD_ROLE_DELETE: "GUILD_ROLE_DELETE";
@@ -7131,6 +7136,9 @@ declare namespace discord {
     const GUILD_SOUNDBOARD_SOUND_UPDATE: "GUILD_SOUNDBOARD_SOUND_UPDATE";
     const GUILD_SOUNDBOARD_SOUND_DELETE: "GUILD_SOUNDBOARD_SOUND_DELETE";
     const GUILD_SOUNDBOARD_SOUNDS_UPDATE: "GUILD_SOUNDBOARD_SOUNDS_UPDATE";
+    const INTEGRATION_CREATE: "INTEGRATION_CREATE";
+    const INTEGRATION_UPDATE: "INTEGRATION_UPDATE";
+    const INTEGRATION_DELETE: "INTEGRATION_DELETE";
     const INVITE_CREATE: "INVITE_CREATE";
     const INVITE_DELETE: "INVITE_DELETE";
     const MESSAGE_CREATE: "MESSAGE_CREATE";
@@ -7141,14 +7149,23 @@ declare namespace discord {
     const MESSAGE_REACTION_REMOVE: "MESSAGE_REACTION_REMOVE";
     const MESSAGE_REACTION_REMOVE_ALL: "MESSAGE_REACTION_REMOVE_ALL";
     const MESSAGE_REACTION_REMOVE_EMOJI: "MESSAGE_REACTION_REMOVE_EMOJI";
+    const MESSAGE_POLL_VOTE_ADD: "MESSAGE_POLL_VOTE_ADD";
+    const MESSAGE_POLL_VOTE_REMOVE: "MESSAGE_POLL_VOTE_REMOVE";
     const INTERACTION_CREATE: "INTERACTION_CREATE";
     const PRESENCE_UPDATE: "PRESENCE_UPDATE";
+    const STAGE_INSTANCE_CREATE: "STAGE_INSTANCE_CREATE";
+    const STAGE_INSTANCE_UPDATE: "STAGE_INSTANCE_UPDATE";
+    const STAGE_INSTANCE_DELETE: "STAGE_INSTANCE_DELETE";
+    const SUBSCRIPTION_CREATE: "SUBSCRIPTION_CREATE";
+    const SUBSCRIPTION_UPDATE: "SUBSCRIPTION_UPDATE";
+    const SUBSCRIPTION_DELETE: "SUBSCRIPTION_DELETE";
     const TYPING_START: "TYPING_START";
     const USER_UPDATE: "USER_UPDATE";
     const VOICE_STATE_UPDATE: "VOICE_STATE_UPDATE";
     const VOICE_SERVER_UPDATE: "VOICE_SERVER_UPDATE";
     const VOICE_CHANNEL_STATUS_UPDATE: "VOICE_CHANNEL_STATUS_UPDATE";
     const VOICE_CHANNEL_START_TIME_UPDATE: "VOICE_CHANNEL_START_TIME_UPDATE";
+    const VOICE_CHANNEL_EFFECT_SEND: "VOICE_CHANNEL_EFFECT_SEND";
     const WEBHOOKS_UPDATE: "WEBHOOKS_UPDATE";
     const AUTO_MODERATION_RULE_CREATE: "AUTO_MODERATION_RULE_CREATE";
     const AUTO_MODERATION_RULE_UPDATE: "AUTO_MODERATION_RULE_UPDATE";
@@ -7391,6 +7408,14 @@ declare namespace discord {
     };
   }
 
+  interface MessagePollVoteEvent {
+    userId: Snowflake;
+    channelId: Snowflake;
+    messageId: Snowflake;
+    guildId: Snowflake | null;
+    answerId: number;
+  }
+
   /**
    * Payload for a channel pins update event.
    */
@@ -7503,6 +7528,46 @@ declare namespace discord {
     removedMemberIds: Snowflake[];
   }
 
+  interface ApplicationCommandPermission {
+    id: Snowflake;
+    type: number;
+    permission: boolean;
+  }
+
+  interface ApplicationCommandPermissionsUpdateEvent {
+    id: Snowflake;
+    applicationId: Snowflake;
+    guildId: Snowflake;
+    permissions: ApplicationCommandPermission[];
+  }
+
+  interface Entitlement {
+    id: Snowflake;
+    skuId: Snowflake;
+    applicationId: Snowflake;
+    userId?: Snowflake;
+    guildId?: Snowflake;
+    type: number;
+    deleted: boolean;
+    startsAt?: string | null;
+    endsAt?: string | null;
+    consumed?: boolean;
+    subscriptionId?: Snowflake;
+  }
+
+  interface Subscription {
+    id: Snowflake;
+    userId: Snowflake;
+    skuIds: Snowflake[];
+    entitlementIds: Snowflake[];
+    renewalSkuIds?: Snowflake[];
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+    status: number;
+    canceledAt?: string | null;
+    country?: string;
+  }
+
   /**
    * Payload for an invite delete event.
    */
@@ -7583,6 +7648,17 @@ declare namespace discord {
     id: Snowflake;
     guildId: Snowflake;
     voiceStartTime: Date | null;
+  }
+
+  interface VoiceChannelEffectSendEvent {
+    channelId: Snowflake;
+    guildId: Snowflake;
+    userId: Snowflake;
+    emoji?: EmojiData | null;
+    animationType?: number | null;
+    animationId?: number | null;
+    soundId?: Snowflake | null;
+    soundVolume?: number | null;
   }
 
   /**
@@ -7768,6 +7844,24 @@ declare namespace discord {
     handler: (event: ThreadMembersUpdateEvent) => Promise<unknown>,
   ): void;
   function on(
+    event: typeof events.APPLICATION_COMMAND_PERMISSIONS_UPDATE,
+    handler: (
+      event: ApplicationCommandPermissionsUpdateEvent,
+    ) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.ENTITLEMENT_CREATE,
+    handler: (event: Entitlement) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.ENTITLEMENT_UPDATE,
+    handler: (event: Entitlement) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.ENTITLEMENT_DELETE,
+    handler: (event: Entitlement) => Promise<unknown>,
+  ): void;
+  function on(
     event: typeof events.GUILD_CREATE,
     handler: (guild: Guild) => Promise<unknown>,
   ): void;
@@ -7819,6 +7913,10 @@ declare namespace discord {
       event: GuildMemberRemoveEvent,
       member: GuildMember | null,
     ) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.GUILD_MEMBERS_CHUNK,
+    handler: (event: Record<string, unknown>) => Promise<unknown>,
   ): void;
   function on(
     event: typeof events.GUILD_ROLE_CREATE,
@@ -7875,6 +7973,18 @@ declare namespace discord {
     handler: (event: unknown) => Promise<unknown>,
   ): void;
   function on(
+    event: typeof events.INTEGRATION_CREATE,
+    handler: (event: Record<string, unknown>) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.INTEGRATION_UPDATE,
+    handler: (event: Record<string, unknown>) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.INTEGRATION_DELETE,
+    handler: (event: Record<string, unknown>) => Promise<unknown>,
+  ): void;
+  function on(
     event: typeof events.INVITE_CREATE,
     handler: (invite: Invite) => Promise<unknown>,
   ): void;
@@ -7921,12 +8031,44 @@ declare namespace discord {
     handler: (event: MessageReactionRemoveEmojiEvent) => Promise<unknown>,
   ): void;
   function on(
+    event: typeof events.MESSAGE_POLL_VOTE_ADD,
+    handler: (event: MessagePollVoteEvent) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.MESSAGE_POLL_VOTE_REMOVE,
+    handler: (event: MessagePollVoteEvent) => Promise<unknown>,
+  ): void;
+  function on(
     event: typeof events.INTERACTION_CREATE,
     handler: (interaction: Interaction) => Promise<unknown>,
   ): void;
   function on(
     event: typeof events.PRESENCE_UPDATE,
     handler: (event: PresenceUpdateEvent) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.STAGE_INSTANCE_CREATE,
+    handler: (event: StageInstance) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.STAGE_INSTANCE_UPDATE,
+    handler: (event: StageInstance) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.STAGE_INSTANCE_DELETE,
+    handler: (event: StageInstance) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.SUBSCRIPTION_CREATE,
+    handler: (event: Subscription) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.SUBSCRIPTION_UPDATE,
+    handler: (event: Subscription) => Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.SUBSCRIPTION_DELETE,
+    handler: (event: Subscription) => Promise<unknown>,
   ): void;
   function on(
     event: typeof events.TYPING_START,
@@ -7953,6 +8095,10 @@ declare namespace discord {
     handler: (
       event: VoiceChannelStartTimeUpdateEvent,
     ) => void | Promise<unknown>,
+  ): void;
+  function on(
+    event: typeof events.VOICE_CHANNEL_EFFECT_SEND,
+    handler: (event: VoiceChannelEffectSendEvent) => void | Promise<unknown>,
   ): void;
   function on(
     event: typeof events.WEBHOOKS_UPDATE,
