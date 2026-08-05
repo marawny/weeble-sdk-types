@@ -25,6 +25,7 @@ jobs:
         run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --notes-from-tag --title "$GITHUB_REF_NAME"
       - name: Register release with Weeble
         env:
+          GH_TOKEN: ${{ github.token }}
           SDK_RELEASE_SECRET: ${{ secrets.WEEBLE_SDK_RELEASE_SECRET }}
           SDK_API_URL: ${{ vars.WEEBLE_API_URL }}
         shell: bash
@@ -32,12 +33,13 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           HASH="$(python3 -c "import hashlib; from pathlib import Path; print(hashlib.sha256(Path('lib.weeble.d.ts').read_bytes() + b'\\0' + Path('runtime.d.ts').read_bytes()).hexdigest())")"
           RELEASE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          RELEASE_NOTES="$(gh release view "$GITHUB_REF_NAME" --json body --jq '.body')"
           curl --fail-with-body --retry 3 \
             -H "x-weeble-sdk-release-secret: ${SDK_RELEASE_SECRET}" \
             -F "version=${VERSION}" \
             -F "hash=${HASH}" \
-            -F "github_release_url=${RELEASE_URL}" \
-            -F "release_notes=See ${RELEASE_URL}" \
+            --form-string "github_release_url=${RELEASE_URL}" \
+            --form-string "release_notes=${RELEASE_NOTES}" \
             -F "discord=@lib.weeble.d.ts;type=text/plain" \
             -F "runtime=@runtime.d.ts;type=text/plain" \
             "${SDK_API_URL%/}/internal/sdk/releases"
