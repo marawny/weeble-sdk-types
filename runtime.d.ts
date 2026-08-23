@@ -141,6 +141,158 @@ declare class URL {
 }
 
 type BufferSource = ArrayBufferView | ArrayBuffer;
+
+interface WebCryptoAlgorithm {
+  name: string;
+  [parameter: string]: unknown;
+}
+
+type AlgorithmIdentifier = string | WebCryptoAlgorithm;
+type KeyFormat = "jwk" | "pkcs8" | "raw" | "spki";
+type KeyType = "private" | "public" | "secret";
+type KeyUsage =
+  | "decrypt"
+  | "deriveBits"
+  | "deriveKey"
+  | "encrypt"
+  | "sign"
+  | "unwrapKey"
+  | "verify"
+  | "wrapKey";
+
+interface JsonWebKey {
+  alg?: string;
+  crv?: string;
+  d?: string;
+  dp?: string;
+  dq?: string;
+  e?: string;
+  ext?: boolean;
+  k?: string;
+  key_ops?: string[];
+  kty?: string;
+  n?: string;
+  oth?: Array<{ d?: string; r?: string; t?: string }>;
+  p?: string;
+  q?: string;
+  qi?: string;
+  use?: string;
+  x?: string;
+  y?: string;
+}
+
+interface CryptoKey {
+  readonly algorithm: WebCryptoAlgorithm;
+  readonly extractable: boolean;
+  readonly type: KeyType;
+  readonly usages: KeyUsage[];
+}
+
+declare var CryptoKey: {
+  prototype: CryptoKey;
+  new (): CryptoKey;
+};
+
+interface CryptoKeyPair {
+  readonly privateKey: CryptoKey;
+  readonly publicKey: CryptoKey;
+}
+
+interface SubtleCrypto {
+  decrypt(
+    algorithm: AlgorithmIdentifier,
+    key: CryptoKey,
+    data: BufferSource,
+  ): Promise<ArrayBuffer>;
+  deriveBits(
+    algorithm: AlgorithmIdentifier,
+    baseKey: CryptoKey,
+    length?: number | null,
+  ): Promise<ArrayBuffer>;
+  deriveKey(
+    algorithm: AlgorithmIdentifier,
+    baseKey: CryptoKey,
+    derivedKeyType: AlgorithmIdentifier,
+    extractable: boolean,
+    keyUsages: KeyUsage[],
+  ): Promise<CryptoKey>;
+  digest(
+    algorithm: AlgorithmIdentifier,
+    data: BufferSource,
+  ): Promise<ArrayBuffer>;
+  encrypt(
+    algorithm: AlgorithmIdentifier,
+    key: CryptoKey,
+    data: BufferSource,
+  ): Promise<ArrayBuffer>;
+  exportKey(format: "jwk", key: CryptoKey): Promise<JsonWebKey>;
+  exportKey(
+    format: Exclude<KeyFormat, "jwk">,
+    key: CryptoKey,
+  ): Promise<ArrayBuffer>;
+  generateKey(
+    algorithm: AlgorithmIdentifier,
+    extractable: boolean,
+    keyUsages: KeyUsage[],
+  ): Promise<CryptoKey | CryptoKeyPair>;
+  importKey(
+    format: KeyFormat,
+    keyData: BufferSource | JsonWebKey,
+    algorithm: AlgorithmIdentifier,
+    extractable: boolean,
+    keyUsages: KeyUsage[],
+  ): Promise<CryptoKey>;
+  sign(
+    algorithm: AlgorithmIdentifier,
+    key: CryptoKey,
+    data: BufferSource,
+  ): Promise<ArrayBuffer>;
+  supports(
+    operation: string,
+    algorithm: AlgorithmIdentifier,
+    lengthOrHash?: number | AlgorithmIdentifier | null,
+  ): boolean;
+  unwrapKey(
+    format: KeyFormat,
+    wrappedKey: BufferSource,
+    unwrappingKey: CryptoKey,
+    unwrapAlgorithm: AlgorithmIdentifier,
+    unwrappedKeyAlgorithm: AlgorithmIdentifier,
+    extractable: boolean,
+    keyUsages: KeyUsage[],
+  ): Promise<CryptoKey>;
+  verify(
+    algorithm: AlgorithmIdentifier,
+    key: CryptoKey,
+    signature: BufferSource,
+    data: BufferSource,
+  ): Promise<boolean>;
+  wrapKey(
+    format: KeyFormat,
+    key: CryptoKey,
+    wrappingKey: CryptoKey,
+    wrapAlgorithm: AlgorithmIdentifier,
+  ): Promise<ArrayBuffer>;
+}
+
+declare var SubtleCrypto: {
+  prototype: SubtleCrypto;
+  new (): SubtleCrypto;
+};
+
+interface Crypto {
+  readonly subtle: SubtleCrypto;
+  getRandomValues<T extends ArrayBufferView | null>(array: T): T;
+  randomUUID(): `${string}-${string}-${string}-${string}-${string}`;
+}
+
+declare var Crypto: {
+  prototype: Crypto;
+  new (): Crypto;
+};
+
+declare var crypto: Crypto;
+
 type BodyInit =
   | BufferSource
   | Blob
@@ -784,6 +936,26 @@ declare namespace weeble {
     limit?: number;
   }
 
+  interface KVPageOptions extends KVListOptions {
+    /** Continue after the cursor returned by a previous page. */
+    cursor?: string;
+  }
+
+  interface KVPage<T> {
+    items: T[];
+    /** Present when another page is available. */
+    cursor?: string;
+  }
+
+  interface KVIncrementOptions {
+    /** Duration in milliseconds until the counter expires. */
+    ttl?: number;
+  }
+
+  type KVBatchOperation =
+    | { type: "put"; key: string; value: JsonValue; ttl?: number }
+    | { type: "delete"; key: string };
+
   interface KVCompareAndSetOptions {
     /** Duration in milliseconds until the updated key expires. */
     ttl?: number;
@@ -812,9 +984,23 @@ declare namespace weeble {
     constructor(namespace: string);
     put(key: string, value: JsonValue, options?: KVPutOptions): Promise<void>;
     get<T extends JsonValue>(key: string): Promise<T | undefined>;
+    /** Reads up to 100 keys in one storage operation. Results match the input order. */
+    getMany<T extends JsonValue>(
+      keys: readonly string[],
+    ): Promise<Array<T | undefined>>;
     delete(key: string, options?: KVDeleteOptions): Promise<void>;
+    /** Atomically adds to a numeric value. Missing keys start at zero. */
+    increment(
+      key: string,
+      amount?: number,
+      options?: KVIncrementOptions,
+    ): Promise<number>;
+    /** Applies up to 100 puts and deletes atomically within this namespace. */
+    batch(operations: readonly KVBatchOperation[]): Promise<void>;
     list(options?: KVListOptions): Promise<string[]>;
     items(options?: KVListOptions): Promise<KVItem[]>;
+    listPage(options?: KVPageOptions): Promise<KVPage<string>>;
+    itemsPage(options?: KVPageOptions): Promise<KVPage<KVItem>>;
     count(): Promise<number>;
     clear(): Promise<number>;
     compareAndSet(

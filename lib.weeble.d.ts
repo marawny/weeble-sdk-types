@@ -1847,22 +1847,22 @@ declare namespace discord {
     /**
      * The user's accent color as a 24-bit RGB integer, or `null`.
      */
-    readonly accentColor: number | null;
+    readonly accentColor: number | null | undefined;
 
     /**
      * Hash of the user's avatar, or `null` if using the default avatar.
      */
-    readonly avatar: string | null;
+    readonly avatar: string | null | undefined;
 
     /**
      * Hash of the user's banner, or `null` if no banner is set.
      */
-    readonly banner: string | null;
+    readonly banner: string | null | undefined;
 
     /**
-     * Indicates whether this user is a bot. `null` when Discord omits the field.
+     * Indicates whether this user is a bot. `undefined` when omitted, `null` if Discord sent null.
      */
-    readonly bot: boolean | null;
+    readonly bot: boolean | null | undefined;
 
     /**
      * When this Discord account was created, decoded from the user snowflake.
@@ -1871,8 +1871,9 @@ declare namespace discord {
 
     /**
      * The user's four-digit discriminator (e.g. `"1234"`).
+     * `undefined` when omitted; not invented as `"0"`.
      */
-    readonly discriminator: string;
+    readonly discriminator: string | undefined;
 
     /**
      * The name best suited for display in user-facing output.
@@ -1885,7 +1886,7 @@ declare namespace discord {
     /**
      * The user's global display name, or `null` if not set.
      */
-    readonly globalName: string | null;
+    readonly globalName: string | null | undefined;
 
     /**
      * User ID.
@@ -1895,10 +1896,10 @@ declare namespace discord {
     /**
      * Public Discord user flags bitfield, or `null` when Discord omitted it.
      */
-    readonly publicFlags: number | null;
+    readonly publicFlags: number | null | undefined;
 
     /** The user's displayed guild identity, or `null` when none is selected. */
-    readonly primaryGuild: UserPrimaryGuild | null;
+    readonly primaryGuild: UserPrimaryGuild | null | undefined;
 
     /**
      * The user's display name (not globally unique).
@@ -1948,7 +1949,7 @@ declare namespace discord {
     /**
      * When the member's timeout expires, or `null` if not timed out.
      */
-    readonly communicationDisabledUntil: Date | null;
+    readonly communicationDisabledUntil: Date | null | undefined;
 
     /**
      * When the underlying user account was created, decoded from the member/user snowflake.
@@ -1979,33 +1980,35 @@ declare namespace discord {
 
     /**
      * When the member joined the guild.
+     * `undefined` when the payload omitted it (not invented as "now").
      */
-    readonly joinedAt: Date;
+    readonly joinedAt: Date | undefined;
 
     /**
      * The member's nickname (server name), or `null` if not set.
      */
-    readonly nick: string | null;
+    readonly nick: string | null | undefined;
 
     /**
      * Whether the member has not yet passed the guild's membership screening requirements.
      */
-    readonly pending: boolean;
+    readonly pending: boolean | undefined;
 
     /**
-     * Combined permission bitmask for this member (guild-level + role-based), or 0 before cache is populated.
+     * Combined permission bitmask for this member (guild-level + role-based).
+     * `undefined` when the payload omitted it; not invented as `0`.
      */
-    readonly permissions: bigint;
+    readonly permissions: bigint | undefined;
 
     /**
      * When the member started boosting, or `null` if not boosting.
      */
-    readonly premiumSince: Date | null;
+    readonly premiumSince: Date | null | undefined;
 
     /**
      * Array of role IDs assigned to this member.
      */
-    readonly roles: Snowflake[];
+    readonly roles: Snowflake[] | undefined;
 
     /**
      * The underlying user object.
@@ -2213,22 +2216,26 @@ declare namespace discord {
     /**
      * Channel name.
      */
-    readonly name: string;
+    readonly name: string | undefined;
 
     /**
      * ID of the parent category channel, or `null` when not categorized.
+     * `undefined` when the payload omitted it.
      */
-    readonly parentId: Snowflake | null;
+    readonly parentId: Snowflake | null | undefined;
 
     /**
      * Permission overwrites applied to this channel. Each entry has an `allow` and `deny` bitfield as decimal strings.
+     * `undefined` when the payload omitted the list (not the same as an empty list).
      */
-    readonly permissionOverwrites: Array<{
-      allow: string;
-      deny: string;
-      id: Snowflake;
-      type: PermissionOverwriteType;
-    }>;
+    readonly permissionOverwrites:
+      | Array<{
+          allow: string;
+          deny: string;
+          id: Snowflake;
+          type: PermissionOverwriteType;
+        }>
+      | undefined;
 
     /**
      * Manager for permission overwrites on this channel.
@@ -2238,7 +2245,7 @@ declare namespace discord {
     /**
      * Position in the channel list (left-to-right, top-to-bottom).
      */
-    readonly position: number;
+    readonly position: number | undefined;
 
     /**
      * Discord URL to jump to this channel.
@@ -2341,17 +2348,17 @@ declare namespace discord {
     /**
      * Indicates whether this channel is marked as not-safe-for-work.
      */
-    readonly nsfw: boolean;
+    readonly nsfw: boolean | undefined;
 
     /**
      * Slow mode cooldown in seconds (0 = disabled).
      */
-    readonly rateLimitPerUser: number;
+    readonly rateLimitPerUser: number | undefined;
 
     /**
      * The channel topic, or `null` if not set.
      */
-    readonly topic: string | null;
+    readonly topic: string | null | undefined;
 
     /**
      * Bulk delete messages by ID (Discord limit: 2-100, older than 2 weeks fails).
@@ -2499,12 +2506,12 @@ declare namespace discord {
     /**
      * Audio bitrate in bps.
      */
-    readonly bitrate: number;
+    readonly bitrate: number | undefined;
 
     /**
      * Maximum number of users allowed in the channel (0 = unlimited).
      */
-    readonly userLimit: number;
+    readonly userLimit: number | undefined;
 
     /**
      * Edit voice channel properties.
@@ -2601,12 +2608,12 @@ declare namespace discord {
     /**
      * Audio bitrate in bps.
      */
-    readonly bitrate: number;
+    readonly bitrate: number | undefined;
 
     /**
      * The stage topic, or `null` if not set.
      */
-    readonly topic: string | null;
+    readonly topic: string | null | undefined;
 
     /**
      * Edit stage channel properties.
@@ -2639,12 +2646,12 @@ declare namespace discord {
     /**
      * ID of the member who created this thread, or `null`.
      */
-    readonly ownerId: Snowflake | null;
+    readonly ownerId: Snowflake | null | undefined;
 
     /**
      * ID of the parent channel, or `null` if not available.
      */
-    readonly parentId: Snowflake | null;
+    readonly parentId: Snowflake | null | undefined;
 
     /**
      * Add a member to this thread.
@@ -3296,6 +3303,10 @@ declare namespace discord {
    * Fetch and mutation methods call Discord unless their documentation explicitly
    * identifies a gateway-cache lookup.
    *
+   * Omitted fields are `undefined`, not synthesized defaults. `null` means Discord
+   * sent null. Cache-backed `fetchGuild()` may only populate `id`, `name`, and
+   * `ownerId`.
+   *
    * #### Example
    * ```ts
    * const guild = await message.fetchGuild();
@@ -3308,32 +3319,32 @@ declare namespace discord {
     /**
      * Hash of the guild's banner, or `null` if not set.
      */
-    readonly banner: string | null;
+    readonly banner: string | null | undefined;
 
-    readonly splash: string | null;
-    readonly discoverySplash: string | null;
-    readonly afkChannelId: Snowflake | null;
-    readonly afkTimeout: number;
-    readonly widgetEnabled: boolean;
-    readonly widgetChannelId: Snowflake | null;
-    readonly mfaLevel: number;
-    readonly applicationId: Snowflake | null;
-    readonly systemChannelId: Snowflake | null;
-    readonly systemChannelFlags: number;
-    readonly rulesChannelId: Snowflake | null;
-    readonly publicUpdatesChannelId: Snowflake | null;
-    readonly maxMembers: number | null;
-    readonly maxPresences: number | null;
-    readonly maxVideoChannelUsers: number | null;
-    readonly maxStageVideoChannelUsers: number | null;
-    readonly approximateMemberCount: number | null;
-    readonly approximatePresenceCount: number | null;
-    readonly nsfwLevel: number;
-    readonly premiumProgressBarEnabled: boolean;
-    readonly safetyAlertsChannelId: Snowflake | null;
-    readonly roles: Map<Snowflake, Role>;
-    readonly emojis: Map<Snowflake, Emoji>;
-    readonly stickers: Map<Snowflake, Sticker>;
+    readonly splash: string | null | undefined;
+    readonly discoverySplash: string | null | undefined;
+    readonly afkChannelId: Snowflake | null | undefined;
+    readonly afkTimeout: number | undefined;
+    readonly widgetEnabled: boolean | undefined;
+    readonly widgetChannelId: Snowflake | null | undefined;
+    readonly mfaLevel: number | undefined;
+    readonly applicationId: Snowflake | null | undefined;
+    readonly systemChannelId: Snowflake | null | undefined;
+    readonly systemChannelFlags: number | undefined;
+    readonly rulesChannelId: Snowflake | null | undefined;
+    readonly publicUpdatesChannelId: Snowflake | null | undefined;
+    readonly maxMembers: number | null | undefined;
+    readonly maxPresences: number | null | undefined;
+    readonly maxVideoChannelUsers: number | null | undefined;
+    readonly maxStageVideoChannelUsers: number | null | undefined;
+    readonly approximateMemberCount: number | null | undefined;
+    readonly approximatePresenceCount: number | null | undefined;
+    readonly nsfwLevel: number | undefined;
+    readonly premiumProgressBarEnabled: boolean | undefined;
+    readonly safetyAlertsChannelId: Snowflake | null | undefined;
+    readonly roles: Map<Snowflake, Role> | undefined;
+    readonly emojis: Map<Snowflake, Emoji> | undefined;
+    readonly stickers: Map<Snowflake, Sticker> | undefined;
     readonly createdTimestamp: number;
 
     /**
@@ -3344,27 +3355,29 @@ declare namespace discord {
     /**
      * Default notification level for the guild.
      */
-    readonly defaultMessageNotifications: Guild.NotificationsLevel;
+    readonly defaultMessageNotifications: Guild.NotificationsLevel | undefined;
 
     /**
      * The guild's description shown in the Server Discovery listing, or `null`.
+     * `undefined` when the payload omitted it.
      */
-    readonly description: string | null;
+    readonly description: string | null | undefined;
 
     /**
      * Level of content filtering applied to messages.
      */
-    readonly explicitContentFilter: Guild.ExplicitContentFilterLevel;
+    readonly explicitContentFilter: Guild.ExplicitContentFilterLevel | undefined;
 
     /**
      * Array of feature flags the guild has enabled.
      */
-    readonly features: Guild.Feature[];
+    readonly features: Guild.Feature[] | undefined;
 
     /**
      * Hash of the guild's icon, or `null` if not set.
+     * `undefined` when the payload omitted it (cache-backed fetches do not invent `null`).
      */
-    readonly icon: string | null;
+    readonly icon: string | null | undefined;
 
     /**
      * Guild ID.
@@ -3373,9 +3386,9 @@ declare namespace discord {
 
     /**
      * Member count reported by the gateway or latest guild REST response.
-     * It may lag behind joins and leaves until Discord sends updated guild data.
+     * `undefined` when the payload did not include a count.
      */
-    readonly memberCount: number;
+    readonly memberCount: number | undefined;
 
     /**
      * The guild's name.
@@ -3383,34 +3396,34 @@ declare namespace discord {
     readonly name: string;
 
     /**
-     * ID of the guild owner.
+     * ID of the guild owner, when the payload included it.
      */
-    readonly ownerId: Snowflake;
+    readonly ownerId: Snowflake | null | undefined;
 
     /**
      * The guild's preferred locale (e.g. `"en-US"`).
      */
-    readonly preferredLocale: string;
+    readonly preferredLocale: string | undefined;
 
     /**
      * Number of Nitro boosts the guild currently has.
      */
-    readonly premiumSubscriptionCount: number;
+    readonly premiumSubscriptionCount: number | undefined;
 
     /**
-     * The guild's Nitro boost tier.
+     * The guild's Nitro boost tier. `undefined` when omitted; `0` only when Discord sent 0.
      */
-    readonly premiumTier: Guild.PremiumTier;
+    readonly premiumTier: Guild.PremiumTier | undefined;
 
     /**
      * The vanity invite code, or `null` if the guild doesn't have a vanity URL.
      */
-    readonly vanityUrlCode: string | null;
+    readonly vanityUrlCode: string | null | undefined;
 
     /**
      * Verification level required to send messages.
      */
-    readonly verificationLevel: Guild.VerificationLevel;
+    readonly verificationLevel: Guild.VerificationLevel | undefined;
 
     /**
      * Ban a user from the guild.
@@ -3885,12 +3898,12 @@ declare namespace discord {
    */
   class Role implements Mentionable {
     /**
-     * 24-bit RGB color for this role, or 0 for default.
+     * 24-bit RGB color for this role. `undefined` when omitted; `0` only when Discord sent 0.
      */
-    readonly color: number;
+    readonly color: number | undefined;
 
     /** Role colors. Prefer this over the legacy singular `color` field. */
-    readonly colors: RoleColors;
+    readonly colors: RoleColors | undefined;
 
     /**
      * When this role was created.
@@ -3905,12 +3918,12 @@ declare namespace discord {
     /**
      * Indicates whether this role is displayed separately in the member list.
      */
-    readonly hoist: boolean;
+    readonly hoist: boolean | undefined;
 
     /**
      * Hash of the role's icon, or `null` if not set.
      */
-    readonly icon: string | null;
+    readonly icon: string | null | undefined;
 
     /**
      * Role ID.
@@ -3920,12 +3933,12 @@ declare namespace discord {
     /**
      * Indicates whether this role is managed by an integration.
      */
-    readonly managed: boolean;
+    readonly managed: boolean | undefined;
 
     /**
      * Indicates whether this role can be mentioned by anyone.
      */
-    readonly mentionable: boolean;
+    readonly mentionable: boolean | undefined;
 
     /**
      * Role name.
@@ -3935,17 +3948,17 @@ declare namespace discord {
     /**
      * Permission bitmask for this role.
      */
-    readonly permissions: bigint;
+    readonly permissions: bigint | undefined;
 
     /**
      * Position in the role hierarchy (higher = higher priority).
      */
-    readonly position: number;
+    readonly position: number | undefined;
 
     /**
      * Unicode emoji displayed as the role icon, or `null`.
      */
-    readonly unicodeEmoji: string | null;
+    readonly unicodeEmoji: string | null | undefined;
 
     /**
      * Delete this role.
@@ -3982,7 +3995,7 @@ declare namespace discord {
     /**
      * Indicates whether this emoji is animated.
      */
-    readonly animated: boolean;
+    readonly animated: boolean | undefined;
 
     /**
      * When this emoji was created, decoded from the emoji snowflake.
@@ -3997,22 +4010,22 @@ declare namespace discord {
     /**
      * Emoji ID.
      */
-    readonly id: Snowflake | null;
+    readonly id: Snowflake | null | undefined;
 
     /**
      * Emoji name used for the colon syntax (`:name:`).
      */
-    readonly name: string | null;
+    readonly name: string | null | undefined;
 
     /** Role IDs allowed to use the emoji, or `null` when unrestricted. */
-    readonly roles: Snowflake[] | null;
+    readonly roles: Snowflake[] | null | undefined;
 
     /** User who created the emoji when Discord includes it. */
-    readonly user: User | null;
+    readonly user: User | null | undefined;
 
-    readonly requireColons: boolean | null;
-    readonly managed: boolean;
-    readonly available: boolean;
+    readonly requireColons: boolean | null | undefined;
+    readonly managed: boolean | undefined;
+    readonly available: boolean | undefined;
 
     /**
      * Delete this emoji.
@@ -4921,12 +4934,13 @@ declare namespace discord {
     /**
      * Channel ID the user is connected to, or `null` if not in voice.
      */
-    readonly channelId: Snowflake | null;
+    readonly channelId: Snowflake | null | undefined;
 
     /**
      * Indicates whether the user is server-deafened.
+     * `undefined` when the payload omitted it; `false` only when Discord sent false.
      */
-    readonly deaf: boolean;
+    readonly deaf: boolean | undefined;
 
     /**
      * Guild ID this voice state is for.
@@ -4941,27 +4955,27 @@ declare namespace discord {
     /**
      * Indicates whether the user is server-muted.
      */
-    readonly mute: boolean;
+    readonly mute: boolean | undefined;
 
     /**
      * Indicates whether the user has deafened themselves.
      */
-    readonly selfDeaf: boolean;
+    readonly selfDeaf: boolean | undefined;
 
     /**
      * Indicates whether the user has muted themselves.
      */
-    readonly selfMute: boolean;
+    readonly selfMute: boolean | undefined;
 
     /**
      * Indicates whether the user is streaming.
      */
-    readonly selfStream: boolean;
+    readonly selfStream: boolean | undefined;
 
     /**
      * Indicates whether the user's camera is enabled.
      */
-    readonly selfVideo: boolean;
+    readonly selfVideo: boolean | undefined;
 
     /**
      * Session ID for the voice connection.
@@ -4971,7 +4985,7 @@ declare namespace discord {
     /**
      * Indicates whether the user is suppressed (in a stage).
      */
-    readonly suppress: boolean;
+    readonly suppress: boolean | undefined;
 
     /** Stage request-to-speak time as a Unix timestamp in milliseconds. */
     readonly requestToSpeakTimestamp: number | null;
