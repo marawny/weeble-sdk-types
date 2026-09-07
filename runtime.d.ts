@@ -810,7 +810,7 @@ declare var CountQueuingStrategy: {
 declare namespace weeble {
   type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
   interface JsonObject {
-    [key: string]: JsonValue;
+    [key: string]: JsonValue | undefined;
   }
   interface JsonArray extends Array<JsonValue> {}
 
