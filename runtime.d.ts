@@ -1,3 +1,7 @@
+/**
+ * Writes to the deployment's runtime logs. All five methods preserve their log level.
+ * Do not log bot tokens, credentials, private KV values, or unnecessary user data.
+ */
 interface Console {
   error(message?: unknown, ...optionalParams: unknown[]): void;
   log(message?: unknown, ...optionalParams: unknown[]): void;
@@ -9,7 +13,7 @@ interface Console {
 declare var console: Console;
 
 interface Performance {
-  /** Milliseconds elapsed since this isolate's runtime API was installed. */
+  /** Milliseconds elapsed since this runtime instance started. The origin may span several events. */
   now(): number;
 
   /** Unix timestamp, in milliseconds, used as the zero point for `performance.now()`. */
@@ -18,14 +22,21 @@ interface Performance {
 
 declare var performance: Performance;
 
+/** Decodes base64 to a Latin-1 binary string, not UTF-8 text. */
 declare function atob(encodedString: string): string;
+/** Encodes a Latin-1 binary string as base64 and throws for characters above U+00FF. */
 declare function btoa(rawString: string): string;
 
+/**
+ * Runs a callback every `timeout` milliseconds. Only work awaited by the current handler is
+ * guaranteed to finish; do not use timers for durable background work or scheduling.
+ */
 declare function setInterval<TArgs extends unknown[]>(
   handler: (...args: TArgs) => void,
   timeout?: number,
   ...arguments: TArgs
 ): number;
+/** Runs a callback after `timeout` milliseconds. Timer callbacks are not awaited. */
 declare function setTimeout<TArgs extends unknown[]>(
   handler: (...args: TArgs) => void,
   timeout?: number,
@@ -33,6 +44,7 @@ declare function setTimeout<TArgs extends unknown[]>(
 ): number;
 declare function clearInterval(handle?: number): void;
 declare function clearTimeout(handle?: number): void;
+/** Waits for `timeout` milliseconds. Await it from the current handler. */
 declare function sleep(timeout: number): Promise<void>;
 
 interface AbortSignal {
@@ -190,7 +202,6 @@ interface CryptoKey {
 
 declare var CryptoKey: {
   prototype: CryptoKey;
-  new (): CryptoKey;
 };
 
 interface CryptoKeyPair {
@@ -277,18 +288,16 @@ interface SubtleCrypto {
 
 declare var SubtleCrypto: {
   prototype: SubtleCrypto;
-  new (): SubtleCrypto;
 };
 
 interface Crypto {
   readonly subtle: SubtleCrypto;
-  getRandomValues<T extends ArrayBufferView | null>(array: T): T;
+  getRandomValues<T extends ArrayBufferView>(array: T): T;
   randomUUID(): `${string}-${string}-${string}-${string}-${string}`;
 }
 
 declare var Crypto: {
   prototype: Crypto;
-  new (): Crypto;
 };
 
 declare var crypto: Crypto;
@@ -358,10 +367,16 @@ type ReferrerPolicy =
   | "strict-origin-when-cross-origin"
   | "unsafe-url";
 
+/**
+ * Deno-compatible request options. This runtime has no browser cookie jar or CORS context;
+ * browser-oriented fields do not relax Weeble's outbound-network policy.
+ */
 interface RequestInit {
   body?: BodyInit | null;
   cache?: RequestCache;
   credentials?: RequestCredentials;
+  /** Required by the Fetch API when `body` is a `ReadableStream`. */
+  duplex?: "half";
   headers?: HeadersInit;
   integrity?: string;
   keepalive?: boolean;
@@ -422,10 +437,16 @@ declare var Response: {
   prototype: Response;
   new (body?: BodyInit | null, init?: ResponseInit): Response;
   error(): Response;
-  json(data?: unknown, init?: ResponseInit): Response;
+  json(data: unknown, init?: ResponseInit): Response;
   redirect(url: string | URL, status?: number): Response;
 };
 
+/**
+ * Sends an outbound HTTP(S) request. Private, loopback, link-local, and Weeble service
+ * addresses are blocked, including after redirects and DNS resolution. Requests time out
+ * after 10 seconds by default. Responses are buffered and limited to 10 MiB by default;
+ * exceeding the limit rejects with `RangeError`. A caller-provided abort signal is honored.
+ */
 declare function fetch(
   input: RequestInfo,
   init?: RequestInit,
@@ -492,8 +513,8 @@ declare class TextDecoder {
 }
 
 interface TextEncoderEncodeIntoResult {
-  read?: number;
-  written?: number;
+  read: number;
+  written: number;
 }
 
 declare class TextEncoder {
@@ -781,23 +802,24 @@ declare var CountQueuingStrategy: {
 };
 
 /**
- * Persistent key-value storage for Weeble scripts.
+ * Weeble runtime APIs for scheduled tasks, metered compute, and persistent KV storage.
  *
- * Data is scoped to the current deployment and persists across script updates.
+ * Module state may be reused across events handled by the same warm runtime, but it is not
+ * durable and must never be the only copy of data. An execution is one event or task dispatch.
  */
 declare namespace weeble {
   type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
   interface JsonObject {
-    [key: string]: JsonValue | undefined;
+    [key: string]: JsonValue;
   }
   interface JsonArray extends Array<JsonValue> {}
 
-  interface ScheduledTaskEvent extends JsonObject {
+  interface ScheduledTaskEvent {
     /** Task name registered in code. */
     name: string;
     /** Instance ID supplied to `weeble.tasks.runAt(...)`, or `null` for recurring tasks. */
     instanceId: string | null;
-    /** Payload supplied for this run. */
+    /** Payload supplied to `runAt`, or an empty object for recurring tasks. */
     payload: JsonObject;
     /** Unique run ID for this attempt. */
     runId: string;
@@ -805,19 +827,17 @@ declare namespace weeble {
     scheduledAt: string;
     /** UTC time this run started, as an ISO string. */
     startedAt: string;
-    /** Number of schedule occurrences between `scheduledAt` and `startedAt`. */
+    /** Number of intervening recurring occurrences that were skipped, not separately delivered. */
     missedRuns: number;
   }
 
-  type ScheduledTaskHandler = (
-    event: ScheduledTaskEvent,
-  ) => unknown | Promise<unknown>;
+  /** A returned promise is awaited; rejecting it marks the run as failed. */
+  type ScheduledTaskHandler = (event: ScheduledTaskEvent) => unknown;
 
   namespace cron {
     /**
-     * Runs a task repeatedly with a fixed interval such as `30s`, `5m`, `1h`, or `1d`.
-     *
-     * Weeble stores the schedule during publish and dispatches the task each time it becomes due.
+     * Registers a recurring task during publish. Intervals are one positive integer followed by
+     * `s`, `m`, `h`, or `d` (for example `30s` or `2h`); compound forms are not accepted.
      */
     function every(
       name: string,
@@ -830,6 +850,8 @@ declare namespace weeble {
      *
      * Fields are minute, hour, day of month, month, and day of week. Use `*`,
      * comma-separated values, ranges, and `/` steps. Sunday is `0` or `7`.
+     * When both day fields are restricted, either may match. Named values, macros,
+     * and extensions such as `L`, `#`, and `?` are not accepted.
      *
      * Example: `weeble.cron.schedule('daily-report', '0 9 * * *', handler)` runs
      * every day at 09:00 UTC.
@@ -842,21 +864,33 @@ declare namespace weeble {
   }
 
   interface OneShotTaskResult {
+    /** Stable task ID generated from the deployment, task name, and instance ID. */
     id: string;
+    /** Normalized task name. */
     name: string;
+    /** Caller-supplied ID used to replace or reschedule the same logical task. */
     instanceId: string;
+    /** Scheduled time as an ISO 8601 string. */
     runAt: string;
-    /** Unix timestamp in milliseconds. */
+    /** The same scheduled time as a Unix timestamp in milliseconds. */
     nextRunAt: number;
   }
 
+  /**
+   * One-shot schedules are durable but cannot be listed or canceled from script code.
+   * Use a stable `instanceId` so a later call can reschedule the same logical task.
+   */
   namespace tasks {
-    /** Defines a named task handler that can be triggered by recurring or one-shot schedules. */
+    /** Defines a named handler for one-shot schedules. Recurring registrations define theirs inline. */
     function define(name: string, handler: ScheduledTaskHandler): void;
     /**
      * Schedules one future run of a named task handler.
      *
      * The handler must be declared at top level with `weeble.tasks.define(name, handler)`.
+     * Scheduling the same `name` and `instanceId` again replaces its time and payload.
+     * Failed runs are attempted up to 5 times with exponential backoff.
+     * Delivery can repeat after infrastructure failures, so handlers must be idempotent.
+     * Runs for one schedule do not overlap; the next run is selected after completion.
      */
     function runAt(
       name: string,
@@ -864,7 +898,7 @@ declare namespace weeble {
       runAt: Date | string | number,
       payload?: JsonObject,
     ): Promise<OneShotTaskResult>;
-    /** Alias for `runAt`. */
+    /** @deprecated Use {@link runAt}. */
     function once(
       name: string,
       instanceId: string,
@@ -874,38 +908,41 @@ declare namespace weeble {
   }
 
   interface ComputeOptions {
-    /** CPU time budget for this job. Defaults to 1000ms. */
+    /** CPU time budget for this job. Defaults to 1000ms; valid values are 1–10000ms. */
     cpuMs?: number;
-    /** Wall-clock timeout for async work inside the job. Defaults to the granted CPU budget. */
+    /** Wall-clock timeout for async work inside the job. Defaults to `cpuMs`; the execution deadline still applies. */
     timeoutMs?: number;
   }
 
   interface ComputeResult<T> {
-    /** Value returned by the compute callback. */
     result: T;
-    /** Total CPU milliseconds available to compute jobs in this execution. */
+    /** CPU milliseconds charged to this job, rounded up to the next millisecond. */
+    usedCpuMs: number;
+    /** Wall-clock milliseconds spent waiting for the callback to settle. */
+    usedWallMs: number;
+    /** Total CPU milliseconds available to compute jobs in this execution (10000ms). */
+    bucketMaximumMs: number;
+    /** @deprecated Use {@link bucketMaximumMs}. */
     bucketMaximum: number;
     /** Remaining CPU milliseconds available to compute jobs in this execution. */
     bucketRemainingMs: number;
-    /** Wall-clock milliseconds spent inside this compute run. */
-    usedWallMs: number;
   }
 
   class ComputeQuotaError extends Error {
+    /** Raised before a job starts when its request exceeds the execution's quota or job count. */
     readonly name: "ComputeQuotaError";
   }
 
   class ComputeTimeoutError extends Error {
+    /** Raised when the callback does not settle within `timeoutMs`; prior side effects remain. */
     readonly name: "ComputeTimeoutError";
   }
 
   namespace compute {
     /**
-     * Runs expensive work with a named compute budget.
-     *
-     * Normal event handlers keep their small CPU budget. Use compute jobs for CPU-heavy
-     * routines like winner selection, leaderboard rendering, data transforms, or image work.
-     * A single event can start at most 8 compute jobs.
+     * Runs CPU-heavy work against a separate 10000ms budget. Normal handlers have a 500ms CPU
+     * budget and a 10-second wall deadline by default. One execution can start at most 8 jobs.
+     * `name` labels the job in runtime accounting; it is not an idempotency key.
      */
     function run<T>(
       name: string,
@@ -913,19 +950,24 @@ declare namespace weeble {
       options?: ComputeOptions,
     ): Promise<ComputeResult<T>>;
 
+    /** @deprecated Use {@link ComputeQuotaError}. */
     const QuotaError: typeof ComputeQuotaError;
+    /** @deprecated Use {@link ComputeTimeoutError}. */
     const TimeoutError: typeof ComputeTimeoutError;
   }
 
   interface KVPutOptions {
-    /** Duration in milliseconds until the key expires. */
+    /** Duration in milliseconds until the key expires. Omitting it removes an existing TTL. */
     ttl?: number;
-    /** Only put if the key does not already exist. */
+    /** Only put if the key does not already exist; `put` returns whether it was written. */
     ifNotExists?: boolean;
   }
 
   interface KVDeleteOptions {
-    /** If provided, only delete if the current value matches. */
+    /**
+     * If provided, only delete if the serialized JSON matches; object key order is significant.
+     * `delete` returns whether the value matched and was removed.
+     */
     prevValue?: JsonValue;
   }
 
@@ -948,7 +990,7 @@ declare namespace weeble {
   }
 
   interface KVIncrementOptions {
-    /** Duration in milliseconds until the counter expires. */
+    /** Duration in milliseconds until the counter expires. When supplied, each increment resets it. */
     ttl?: number;
   }
 
@@ -971,7 +1013,8 @@ declare namespace weeble {
    *
    * KV data is scoped to the current deployment and namespace. It persists across
    * publishes and rollbacks until it is explicitly deleted, cleared, expires by
-   * TTL, or the deployment is deleted.
+   * TTL, or the deployment is deleted. Completed writes are immediately visible to
+   * later reads, including from another runtime instance.
    *
    * ```ts
    * const storage = new weeble.KVNamespace('my-data');
@@ -982,14 +1025,16 @@ declare namespace weeble {
   class KVNamespace {
     readonly namespace: string;
     constructor(namespace: string);
-    put(key: string, value: JsonValue, options?: KVPutOptions): Promise<void>;
+    /** Writes a value and returns `false` only when `ifNotExists` prevents the write. */
+    put(key: string, value: JsonValue, options?: KVPutOptions): Promise<boolean>;
     get<T extends JsonValue>(key: string): Promise<T | undefined>;
     /** Reads up to 100 keys in one storage operation. Results match the input order. */
     getMany<T extends JsonValue>(
       keys: readonly string[],
     ): Promise<Array<T | undefined>>;
-    delete(key: string, options?: KVDeleteOptions): Promise<void>;
-    /** Atomically adds to a numeric value. Missing keys start at zero. */
+    /** Deletes a value and reports whether it existed and, when supplied, matched `prevValue`. */
+    delete(key: string, options?: KVDeleteOptions): Promise<boolean>;
+    /** Atomically adds `amount` (default `1`) to a number. Missing keys start at zero; negatives subtract. */
     increment(
       key: string,
       amount?: number,
@@ -997,12 +1042,22 @@ declare namespace weeble {
     ): Promise<number>;
     /** Applies up to 100 puts and deletes atomically within this namespace. */
     batch(operations: readonly KVBatchOperation[]): Promise<void>;
+    /** Returns one lexicographically ordered page of keys (100 by default). */
     list(options?: KVListOptions): Promise<string[]>;
+    /** Returns one lexicographically ordered page of entries (100 by default). */
     items(options?: KVListOptions): Promise<KVItem[]>;
+    /** Returns lexicographically ordered keys and an opaque cursor for the next page. */
     listPage(options?: KVPageOptions): Promise<KVPage<string>>;
+    /** Returns lexicographically ordered entries and an opaque cursor for the next page. */
     itemsPage(options?: KVPageOptions): Promise<KVPage<KVItem>>;
+    /** Returns the exact number of keys in this namespace. */
     count(): Promise<number>;
+    /** Permanently deletes every key in this namespace and returns the number removed. */
     clear(): Promise<number>;
+    /**
+     * Replaces a value only when its serialized JSON equals `compare`.
+     * Object key order is significant.
+     */
     compareAndSet(
       key: string,
       compare: JsonValue,

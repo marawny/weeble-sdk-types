@@ -118,6 +118,7 @@ declare namespace discord {
    *
    * #### Example
    * ```ts
+   * if (!message.author) return;
    * await message.reply({
    *   content: `Hello ${message.author.toMention()}`,
    *   allowedMentions: { users: [message.author.id], parse: [] },
@@ -1312,7 +1313,8 @@ declare namespace discord {
     files?: AttachmentInput[];
 
     /**
-     * Discord bitfield flags.
+     * Discord bitfield flags. Set `IS_COMPONENTS_V2` for Components V2 layouts;
+     * Discord then rejects `content` and `embeds`, and the flag cannot be removed later.
      */
     flags?: number;
 
@@ -1397,7 +1399,8 @@ declare namespace discord {
     files?: AttachmentInput[];
 
     /**
-     * Discord bitfield flags.
+     * Discord bitfield flags. Once a message uses `IS_COMPONENTS_V2`, that flag cannot be
+     * removed, and Discord rejects edits that add `content` or `embeds`.
      */
     flags?: number;
   }
@@ -1494,7 +1497,7 @@ declare namespace discord {
    * #### Example
    * ```ts
    * discord.on(discord.events.MESSAGE_CREATE, async (message) => {
-   *   if (message.author.bot || message.content !== '!ping') return;
+   *   if (!message.author || message.author.bot || message.content !== '!ping') return;
    *   await message.reply('pong');
    * });
    * ```
@@ -1525,7 +1528,8 @@ declare namespace discord {
     readonly channelId: Snowflake;
 
     /**
-     * Raw message content.
+     * Raw message content. In guilds this may be empty unless the bot has the
+     * privileged Message Content intent or Discord grants an exception.
      */
     readonly content: string;
 
@@ -1554,9 +1558,7 @@ declare namespace discord {
      */
     readonly embeds: Embed[];
 
-    /**
-     * Bitmask of message flags, or `null` if none.
-     */
+    /** Bitmask of message flags. Zero means no flags are set. */
     readonly flags: number;
 
     /**
@@ -2034,14 +2036,15 @@ declare namespace discord {
     }): Promise<void>;
 
     /**
-     * Check if this member has a specific permission (checks roles + admin).
+     * Checks the permission snapshot included in this member payload. Returns
+     * `false` when Discord omitted `permissions`; use `resolvePermissions` to fetch and calculate it.
      *
      * @param permission The permission flag to check.
      * @returns Whether the member has the permission.
      */
     can(permission: PermissionFlag): boolean;
     /**
-     * Resolve the effective permissions for this member using Discord's permission hierarchy:
+     * Fetches the guild and resolves effective permissions using Discord's hierarchy:
      * guild owner bypass → @everyone → roles OR → administrator short-circuit → channel overwrites.
      *
      * @param channelId Optional channel ID to apply permission overwrites for. When omitted, only
@@ -2326,8 +2329,11 @@ declare namespace discord {
   }
 
   interface PinPage {
+    /** Pins in this page, ordered by their pin timestamp. */
     items: PinnedMessage[];
+    /** Whether Discord reported that another page is available. */
     hasMore: boolean;
+    /** ISO pin timestamp to pass as `before` for the next page, or `null` at the end. */
     nextBefore: string | null;
   }
 
@@ -2794,7 +2800,8 @@ declare namespace discord {
     for(target: GuildMember | Role): Promise<bigint>;
 
     /**
-     * Set or update a permission overwrite for a role or member.
+     * Replace the permission overwrite for a role or member. Values omitted from
+     * `allow` or `deny` are not merged with the existing overwrite.
      *
      * @param overwriteId The ID of the role or member.
      * @param options The overwrite options including type, allow and deny bitfields.
@@ -3310,7 +3317,9 @@ declare namespace discord {
    * #### Example
    * ```ts
    * const guild = await message.fetchGuild();
-   * const member = guild ? await guild.fetchMember(message.author.id) : null;
+   * const member = guild && message.author
+   *   ? await guild.fetchMember(message.author.id)
+   *   : null;
    * ```
    *
    * @see https://docs.discord.com/developers/resources/guild#guild-object
@@ -3457,9 +3466,10 @@ declare namespace discord {
     ): Promise<void>;
 
     /**
-     * Begin a prune of inactive members.
+     * Permanently removes members that match Discord's inactivity rules. Use
+     * `previewPrune` first when you need to inspect the estimated count.
      *
-     * @param options Prune options (inactivity days, excluded roles, reason).
+     * @param options Prune options (inactivity days, included roles, reason).
      * @returns The prune result with member count.
      */
     beginPrune(options?: GuildPruneOptions): Promise<{
@@ -4569,6 +4579,7 @@ declare namespace discord {
 
     /**
      * Webhook token (only available for incoming webhooks), or `null`.
+     * Treat it as a credential: do not log it or store it in KV.
      */
     readonly token: string | null;
 
@@ -4708,7 +4719,8 @@ declare namespace discord {
     }): Promise<GuildTemplate>;
 
     /**
-     * Sync the template with the current guild state.
+     * Replace this template's snapshot with the current guild state. This does
+     * not apply the template to the guild.
      *
      * @returns The updated template.
      */
@@ -5736,7 +5748,8 @@ declare namespace discord {
     readonly targetId: Snowflake | null;
 
     /**
-     * Interaction token for responding (used internally by reply/followup methods).
+     * Interaction token used internally by reply and follow-up methods.
+     * Treat it as a credential: do not log or persist it.
      */
     readonly token: string;
 
@@ -6376,6 +6389,7 @@ declare namespace discord {
       string(description: string): CommandArgument<string>;
       integer(description: string): CommandArgument<number>;
       number(description: string): CommandArgument<number>;
+      /** Parses one decimal number followed by `ms`, `s`, `m`, `h`, `d`, or `w`; returns milliseconds. */
       duration(description: string): CommandArgument<number>;
       rest(description: string): CommandArgument<string>;
       user(description: string): CommandArgument<User>;
@@ -6447,7 +6461,11 @@ declare namespace discord {
       group(config: GroupConfig): Group;
     }
 
-    /** A command registry created for one script. */
+    /**
+     * A command registry created for one script. Register commands at module scope.
+     * Slash and context-menu definitions are synchronized when the deployment is published;
+     * prefix commands are matched only by the running script.
+     */
     interface CommandApplication extends Group {
       prefix<TSchema extends ArgumentMap = Record<never, never>>(
         config: PrefixConfig<TSchema>,
@@ -7797,7 +7815,8 @@ declare namespace discord {
    * with an optional `old` parameter for update events).
    *
    * Register handlers at module scope. Weeble loads them when a deployment warms and
-   * awaits the returned promise for each dispatched event.
+   * awaits the returned promise for each dispatched event. A thrown error or rejected
+   * promise fails that dispatch and is recorded in the deployment's runtime logs.
    *
    * #### Example
    * ```ts
@@ -8222,7 +8241,7 @@ declare namespace discord {
    * #### Example
    *
    * ```ts
-   * const channel = await discord.fetchGuildTextChannel(config.logsChannel);
+   * const channel = await discord.fetchGuildTextChannel('123456789012345678');
    * if (!channel) return console.warn('Invalid logs channel.');
    * await channel.send('Ready.');
    * ```
