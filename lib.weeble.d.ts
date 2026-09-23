@@ -1,17 +1,17 @@
 /**
- * The global API for Discord events, commands, and supported guild resources.
- * No import is required in a Weeble script.
+ * Events, commands, and the guild's channels, members, roles, and messages.
+ * `discord` is a global, so there is nothing to import.
  *
- * ### Event-Driven Runtime
- * Your code registers handlers for gateway events, prefix commands, or slash
- * commands. Events arrive from the Discord Gateway. Weeble awaits each handler
- * in registration order for a dispatched event. See `discord.on()` for the event list.
+ * ### Events
+ * Register handlers with `discord.on()`. When an event arrives from the Discord
+ * gateway, Weeble runs its handlers one at a time, in the order you registered
+ * them. See `discord.events` for the full list.
  *
- * ### Data on arrival, fetches when you need them
- * Every object (messages, members, channels, roles, …) arrives with its data
- * already populated from the event payload. Methods like `.fetch()`, `.fetchGuild()`,
- * `.fetchChannel()`, `.fetchMember()` make API calls on demand. Prefer the data you
- * already have. Extra fetches are slower.
+ * ### Event data and fetches
+ * Objects in an event, such as the message or the member, arrive with their data
+ * filled in. Methods named `fetch*()`, such as `fetchGuild()` or `fetchMember()`,
+ * ask Discord for data the event didn't include. Use what the event gave you
+ * first: every fetch is another request.
  *
  * ```ts
  * discord.on(discord.events.MESSAGE_CREATE, async (msg) => {
@@ -21,11 +21,10 @@
  * });
  * ```
  *
- * ### API calls are abstracted into methods
- * There is no direct access to the Discord REST API. Every mutation (sending a message,
- * editing a role, kicking a member, banning a user) is a method on the relevant
- * handle. Discord requests pass through Weeble's rate limiter and may wait
- * before being sent.
+ * ### Changing things
+ * Scripts can't call the Discord REST API directly. To send a message, edit a
+ * role, or ban a member, call the method on that object. Requests go through
+ * Weeble's rate limiter and can wait before they are sent.
  *
  * ```ts
  * discord.on(discord.events.GUILD_MEMBER_ADD, async (member) => {
@@ -63,7 +62,7 @@ declare namespace discord {
   type LocaleMap = Record<string, string>;
 
   /**
-   * Convenience alias for a single Discord permission value.
+   * A single Discord permission value.
    * Permissions are expressed as bitmask values (see {@link PermissionFlags}).
    * Combine multiple flags with `|` and check membership with `&`.
    */
@@ -810,62 +809,33 @@ declare namespace discord {
     (typeof StageInstancePrivacyLevel)[keyof typeof StageInstancePrivacyLevel];
 
   /**
-   * Namespace containing errors thrown by the Discord SDK runtime.
+   * A Discord API request that failed. SDK methods that call Discord throw
+   * this. Methods typed to return `null` return it for a 404 instead of
+   * throwing.
+   *
+   * ```ts
+   * try {
+   *   await member.ban();
+   * } catch (error) {
+   *   if (error instanceof discord.ApiError && error.status === 403) {
+   *     await message.reply("I don't have permission to ban them.");
+   *   } else {
+   *     throw error;
+   *   }
+   * }
+   * ```
    */
-  namespace errors {
+  class ApiError extends Error {
+    readonly name: "ApiError";
+    /** HTTP status Discord answered with, such as 403 or 404. */
+    readonly status: number;
     /**
-     * Base error for a Discord API request that could not be completed.
-     * Inspect the error message for Discord's response details.
+     * Discord's JSON error code, or `0` when Discord didn't send one.
+     * @see https://docs.discord.com/developers/topics/opcodes-and-status-codes#json
      */
-    class DiscordError extends RuntimeError {
-      readonly code: number;
-      readonly status: number | null;
-      constructor(message: string, code?: number, status?: number | null);
-    }
-
-    /**
-     * Error thrown when the bot lacks the required permissions to perform an action.
-     */
-    class PermissionError extends DiscordError {
-      constructor(message?: string, code?: number);
-    }
-
-    /**
-     * Error thrown when the bot is being rate limited by Discord. The request can be retried after `retryAfter` seconds.
-     */
-    class RateLimitError extends DiscordError {
-      /**
-       * Indicates whether this is a global rate limit affecting all requests.
-       */
-      global: boolean;
-
-      /**
-       * How long to wait before retrying, in seconds.
-       */
-      retryAfter: number;
-
-      constructor(
-        message: string,
-        retryAfter: number,
-        global?: boolean,
-        code?: number,
-      );
-    }
-
-    /**
-     * Base error for failures surfaced by the Weeble runtime.
-     */
-    class RuntimeError extends Error {
-      constructor(message: string);
-    }
-
-    /**
-     * Error thrown when Discord returns a 5xx server error.
-     */
-    class ServerError extends DiscordError {
-      readonly status: number;
-      constructor(message: string, status: number, code?: number);
-    }
+    readonly code: number;
+    /** Seconds to wait before retrying, for a 429 response. `null` otherwise. */
+    readonly retryAfter: number | null;
   }
 
   /**
@@ -1754,7 +1724,7 @@ declare namespace discord {
      *
      * @param content Message body as a string, or a full options object for embeds, files, etc.
      * @returns The sent message.
-     * @throws {@link errors.DiscordError} When Discord rejects the message or the channel is unavailable.
+     * @throws {@link ApiError} When Discord rejects the message or the channel is unavailable.
      */
     reply(content: string | SendMessageOptions): Promise<Message>;
 
@@ -2187,7 +2157,7 @@ declare namespace discord {
     readonly id: Snowflake;
 
     /**
-     * The type of this channel — use this to narrow to the correct subclass.
+     * The type of this channel. Check it to narrow the channel to its subclass.
      */
     readonly type: ChannelType;
 
@@ -2308,9 +2278,6 @@ declare namespace discord {
      * @returns Array of invites.
      */
     fetchInvites(): Promise<Invite[]>;
-
-    /** @deprecated Use `fetchInvites()`, which does the same thing. */
-    getInvites(): Promise<Invite[]>;
 
     /**
      * Get the effective permission bitmask for a specific member in this channel (accounting for overwrites).
@@ -2500,9 +2467,6 @@ declare namespace discord {
      */
     fetchMessage(messageId: Snowflake): Promise<Message | null>;
 
-    /** @deprecated Use `fetchMessage()`, which does the same thing. */
-    getMessage(messageId: Snowflake): Promise<Message | null>;
-
     /**
      * Send a message in this channel.
      *
@@ -2512,7 +2476,7 @@ declare namespace discord {
     send(content: string | SendMessageOptions): Promise<Message>;
 
     /**
-     * Convenience method to toggle the NSFW flag.
+     * Turn the NSFW flag on or off.
      *
      * @param nsfw Whether the channel should be NSFW.
      * @returns The updated channel.
@@ -2520,7 +2484,7 @@ declare namespace discord {
     setNsfw(nsfw: boolean): Promise<GuildTextChannel>;
 
     /**
-     * Convenience method to set the slow mode cooldown.
+     * Set the slow mode cooldown.
      *
      * @param seconds Slow mode cooldown in seconds (0 to disable).
      * @returns The updated channel.
@@ -2528,7 +2492,7 @@ declare namespace discord {
     setSlowmode(seconds: number): Promise<GuildTextChannel>;
 
     /**
-     * Convenience method to set the channel topic.
+     * Set the channel topic.
      *
      * @param topic The new topic, or null to clear.
      * @returns The updated channel.
@@ -2573,8 +2537,6 @@ declare namespace discord {
     /** List the voice states currently cached for this channel. */
     getVoiceStates(): Promise<VoiceState[]>;
 
-    /** @deprecated Use `getVoiceStates()`, which does the same thing. */
-    fetchVoiceStates(): Promise<VoiceState[]>;
   }
 
   /**
@@ -2777,8 +2739,6 @@ declare namespace discord {
     /** List the voice states currently cached for this channel. */
     getVoiceStates(): Promise<VoiceState[]>;
 
-    /** @deprecated Use `getVoiceStates()`, which does the same thing. */
-    fetchVoiceStates(): Promise<VoiceState[]>;
   }
 
   /**
@@ -2863,9 +2823,6 @@ declare namespace discord {
      * @returns The message, or null if not found.
      */
     fetchMessage(messageId: Snowflake): Promise<Message | null>;
-
-    /** @deprecated Use `fetchMessage()`, which does the same thing. */
-    getMessage(messageId: Snowflake): Promise<Message | null>;
 
     /**
      * Add the bot to this thread.
@@ -3654,13 +3611,12 @@ declare namespace discord {
   }
 
   /**
-   * A Discord guild and the entry point for guild-scoped resources.
-   * Fetch and mutation methods call Discord unless their documentation explicitly
-   * identifies a gateway-cache lookup.
+   * A Discord server. Most methods call Discord; the few that read Weeble's
+   * gateway cache say so.
    *
-   * Omitted fields are `undefined`, not synthesized defaults. `null` means Discord
-   * sent null. Cache-backed `fetchGuild()` may only populate `id`, `name`, and
-   * `ownerId`.
+   * A field is `undefined` when Discord didn't send it and `null` when Discord
+   * sent `null`. A guild from `fetchGuild()` can come from the cache and then
+   * only has `id`, `name`, and `ownerId`.
    *
    * #### Example
    * ```ts
@@ -4042,18 +3998,12 @@ declare namespace discord {
      */
     fetchBan(userId: Snowflake): Promise<GuildBan | null>;
 
-    /** @deprecated Use `fetchBan()`, which does the same thing. */
-    getBan(userId: Snowflake): Promise<GuildBan | null>;
-
     /**
      * Fetch all bans in this guild.
      *
      * @returns An array of all guild bans.
      */
     fetchBans(): Promise<GuildBan[]>;
-
-    /** @deprecated Use `fetchBans()`, which does the same thing. */
-    getBans(): Promise<GuildBan[]>;
 
     /**
      * Fetch a specific channel by ID.
@@ -4078,9 +4028,6 @@ declare namespace discord {
      */
     fetchEmoji(emojiId: Snowflake): Promise<Emoji | null>;
 
-    /** @deprecated Use `fetchEmoji()`, which does the same thing. */
-    getEmoji(emojiId: Snowflake): Promise<Emoji | null>;
-
     /**
      * Fetch all emojis for this guild.
      *
@@ -4088,18 +4035,12 @@ declare namespace discord {
      */
     fetchEmojis(): Promise<Emoji[]>;
 
-    /** @deprecated Use `fetchEmojis()`, which does the same thing. */
-    getEmojis(): Promise<Emoji[]>;
-
     /**
      * Fetch all invites for this guild.
      *
      * @returns An array of all guild invites.
      */
     fetchInvites(): Promise<Invite[]>;
-
-    /** @deprecated Use `fetchInvites()`, which does the same thing. */
-    getInvites(): Promise<Invite[]>;
 
     /**
      * Fetches a guild member from Discord by user ID.
@@ -4464,9 +4405,6 @@ declare namespace discord {
      * Fetch guild members who have this role.
      */
     fetchMembers(options?: FetchMembersOptions): Promise<GuildMember[]>;
-
-    /** @deprecated Use `fetchMembers()`, which does the same thing. */
-    getMembers(options?: FetchMembersOptions): Promise<GuildMember[]>;
 
     /**
      * Get the mention string for this role.
@@ -5136,20 +5074,16 @@ declare namespace discord {
     fetch(): Promise<Invite>;
 
     /**
-     * Fetch the complete channel this invite targets through Discord REST.
-     * Deployment guild isolation applies. Use `invite.channel` for the public
-     * partial channel included with external invite responses.
-     *
-     * @returns The channel, or null if not available.
+     * Fetch the full channel this invite points to. Only works for invites to
+     * the deployment's own guild; for other servers it returns `null`, and
+     * `invite.channel` has the public details Discord includes.
      */
     fetchChannel(): Promise<GuildTextChannel | GuildVoiceChannel | null>;
 
     /**
-     * Fetch the complete guild this invite targets through Discord REST.
-     * Deployment guild isolation applies. Use `invite.guild` for the public
-     * partial guild included with external invite responses.
-     *
-     * @returns The guild, or null if not available.
+     * Fetch the full guild this invite points to. Only works for invites to
+     * the deployment's own guild; for other servers it returns `null`, and
+     * `invite.guild` has the public details Discord includes.
      */
     fetchGuild(): Promise<Guild | null>;
   }
@@ -5246,9 +5180,6 @@ declare namespace discord {
      * @returns The fetched message, or null if not found.
      */
     fetchMessage(messageId: Snowflake): Promise<Message | null>;
-
-    /** @deprecated Use `fetchMessage()`, which does the same thing. */
-    getMessage(messageId: Snowflake): Promise<Message | null>;
 
     /**
      * Execute the webhook to send a message.
@@ -8983,18 +8914,11 @@ declare namespace discord {
   function fetchUser(userId: Snowflake): Promise<User | null>;
 
   /**
-   * Fetches the guild assigned to this deployment.
-   * Returns `null` when Discord reports that the guild does not exist.
+   * Fetches the guild this deployment runs in. A deployment can only reach its
+   * own guild, so there is no ID parameter. Returns `null` if Discord no longer
+   * has the guild.
    */
   function fetchGuild(): Promise<Guild | null>;
-
-  /**
-   * Fetches a guild from Discord by ID.
-   * The bot must have access to the guild. Returns `null` when Discord reports it missing.
-   *
-   * @param guildId The guild ID to fetch.
-   */
-  function fetchGuild(guildId: Snowflake): Promise<Guild | null>;
 
   /**
    * Fetches any channel from Discord by ID.

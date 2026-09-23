@@ -898,13 +898,6 @@ declare namespace weeble {
       runAt: Date | string | number,
       payload?: JsonObject,
     ): Promise<OneShotTaskResult>;
-    /** @deprecated Use {@link runAt}. */
-    function once(
-      name: string,
-      instanceId: string,
-      runAt: Date | string | number,
-      payload?: JsonObject,
-    ): Promise<OneShotTaskResult>;
   }
 
   interface ComputeOptions {
@@ -922,8 +915,6 @@ declare namespace weeble {
     usedWallMs: number;
     /** Total CPU milliseconds available to compute jobs in this execution (10000ms). */
     bucketMaximumMs: number;
-    /** @deprecated Use {@link bucketMaximumMs}. */
-    bucketMaximum: number;
     /** Remaining CPU milliseconds available to compute jobs in this execution. */
     bucketRemainingMs: number;
   }
@@ -950,10 +941,6 @@ declare namespace weeble {
       options?: ComputeOptions,
     ): Promise<ComputeResult<T>>;
 
-    /** @deprecated Use {@link ComputeQuotaError}. */
-    const QuotaError: typeof ComputeQuotaError;
-    /** @deprecated Use {@link ComputeTimeoutError}. */
-    const TimeoutError: typeof ComputeTimeoutError;
   }
 
   interface KVPutOptions {
