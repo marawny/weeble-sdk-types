@@ -4014,6 +4014,45 @@ declare namespace discord {
     fetchChannel(channelId: Snowflake): Promise<AnyGuildChannel | null>;
 
     /**
+     * Gets this guild's channels from the gateway cache. Cached channels have
+     * their name, type, category, `nsfw` flag and permission overwrites, but not
+     * topic, position or slowmode. Falls back to `fetchChannels()` when the
+     * cache is empty.
+     */
+    getChannels(): Promise<AnyGuildChannel[]>;
+
+    /**
+     * Gets a member from the gateway cache. The cached member has `user`,
+     * `nick`, `roles` and `joinedAt`, which covers role checks and display
+     * names; avatar, timeout and boost fields are missing. Falls back to
+     * `fetchMember()` when the member isn't cached.
+     *
+     * ```ts
+     * const member = await guild.getMember(message.author.id);
+     * if (member?.hasRole(modRoleId)) await message.reply("Hi, mod.");
+     * ```
+     *
+     * @param userId The member's user ID.
+     */
+    getMember(userId: Snowflake): Promise<GuildMember | null>;
+
+    /**
+     * Gets one role from the gateway cache. See `getRoles()` for which fields
+     * a cached role has.
+     *
+     * @param roleId The role ID.
+     */
+    getRole(roleId: Snowflake): Promise<Role | null>;
+
+    /**
+     * Gets this guild's roles from the gateway cache. Cached roles have `name`,
+     * `permissions` and `position`, which is enough for permission and
+     * hierarchy checks; color, icon and flags are missing. Falls back to
+     * `fetchRoles()` when the cache is empty.
+     */
+    getRoles(): Promise<Role[]>;
+
+    /**
      * Fetch all channels in this guild.
      *
      * @returns An array of all guild channels.
@@ -8919,6 +8958,30 @@ declare namespace discord {
    * has the guild.
    */
   function fetchGuild(): Promise<Guild | null>;
+
+  /**
+   * Gets this deployment's guild from Weeble's gateway cache, which answers in
+   * a few milliseconds instead of a request to Discord. The cached guild only
+   * has `id`, `name` and `ownerId`; every method still works, because they
+   * only need the ID. Falls back to `fetchGuild()` when the guild isn't cached.
+   *
+   * ```ts
+   * const guild = await discord.getGuild();
+   * const member = await guild?.getMember(userId);
+   * ```
+   */
+  function getGuild(): Promise<Guild | null>;
+
+  /**
+   * Gets a channel in this guild from the gateway cache. The cached channel
+   * has its name, type, category (`parentId`), `nsfw` flag and permission
+   * overwrites, but not its topic, position or slowmode. Falls back to Discord
+   * when the channel isn't cached. Returns `null` for channels outside this
+   * guild.
+   *
+   * @param channelId The channel ID.
+   */
+  function getChannel(channelId: Snowflake): Promise<AnyGuildChannel | null>;
 
   /**
    * Fetches any channel from Discord by ID.
