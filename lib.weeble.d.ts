@@ -2766,6 +2766,30 @@ declare namespace discord {
      */
     readonly parentId: Snowflake | null | undefined;
 
+    /** Thread name. */
+    readonly name: string | undefined;
+
+    /** Whether the thread is archived. */
+    readonly archived: boolean | undefined;
+
+    /** Whether the thread is locked, so only members with Manage Threads can unarchive it. */
+    readonly locked: boolean | undefined;
+
+    /** Minutes of inactivity before Discord archives the thread. */
+    readonly autoArchiveDuration: number | null | undefined;
+
+    /** Approximate number of messages, not counting the starter message. */
+    readonly messageCount: number | null | undefined;
+
+    /** Approximate number of members, capped at 50 by Discord. */
+    readonly memberCount: number | null | undefined;
+
+    /** Total messages ever sent in the thread, including deleted ones. */
+    readonly totalMessageSent: number | null | undefined;
+
+    /** Slowmode delay in seconds. */
+    readonly rateLimitPerUser: number | null | undefined;
+
     /**
      * Add a member to this thread.
      *
@@ -7131,6 +7155,15 @@ declare namespace discord {
       description: string;
       nameLocalizations?: LocaleMap;
       descriptionLocalizations?: LocaleMap;
+      /**
+       * Hides the group and all its subcommands from members without these
+       * permissions, for example `discord.PermissionFlags.MANAGE_THREADS`. Server
+       * admins can still change who sees it under Server Settings > Integrations.
+       * Top-level groups only.
+       */
+      defaultMemberPermissions?: PermissionFlag | null;
+      /** Marks the group as age-restricted. Top-level groups only. */
+      nsfw?: boolean;
       filters?: CommandFilter[];
       permissions?: CommandPermissions;
     }
