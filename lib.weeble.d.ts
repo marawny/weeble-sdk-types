@@ -1278,7 +1278,8 @@ declare namespace discord {
     embeds?: EmbedLike[];
 
     /**
-     * New files to upload.
+     * New files to upload, up to 10. Supported by `channel.send()` and
+     * `message.reply()`; webhooks, follow-ups and forum posts throw if given files.
      */
     files?: AttachmentInput[];
 
@@ -1362,11 +1363,6 @@ declare namespace discord {
      * Embeds to include with the message.
      */
     embeds?: EmbedLike[];
-
-    /**
-     * New files to upload.
-     */
-    files?: AttachmentInput[];
 
     /**
      * Discord bitfield flags. Once a message uses `IS_COMPONENTS_V2`, that flag cannot be
@@ -6771,11 +6767,6 @@ declare namespace discord {
      * Indicates whether this reply should only be visible to the interacting user.
      */
     ephemeral?: boolean;
-
-    /**
-     * Files to upload.
-     */
-    files?: AttachmentInput[];
 
     /**
      * Poll to include with the reply.
